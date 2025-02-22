@@ -14,7 +14,7 @@ def registration():
     email = user_data['email']
     password = user_data['password']
     username = user_data['username']
-
+    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     # Check if email or username already exists
     existing_user = User.query.filter(
         (User.email == user_data['email']) | (User.username == user_data['username'])
@@ -23,7 +23,7 @@ def registration():
     if existing_user:
         return jsonify({"error": "User already exists"}), 401  # Return 401 Unauthorized
 
-    user = User(username=username,email=email,password=password)
+    user = User(username=username,email=email,password=hashed_password)
 
     db.session.add(user)
     db.session.commit()
