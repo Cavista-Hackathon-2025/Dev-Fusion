@@ -1,12 +1,28 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm, FieldErrors } from "react-hook-form"; // Import FieldErrors
+import { useForm, FieldErrors } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
+import { Client, Account, ID, Models } from "appwrite";
 
+// Validate environment variables
+const APPWRITE_ENDPOINT = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
+const APPWRITE_PROJECT_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+
+if (!APPWRITE_ENDPOINT || !APPWRITE_PROJECT_ID) {
+  throw new Error("Missing Appwrite configuration");
+}
+
+const client = new Client()
+  .setEndpoint(APPWRITE_ENDPOINT)
+  .setProject(APPWRITE_PROJECT_ID);
+
+const account = new Account(client);
+
+// Schema definitions
 const signInSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -19,86 +35,120 @@ const signUpSchema = signInSchema
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords must match",
-    path: ["confirmPassword"], // Field to highlight
+    path: ["confirmPassword"],
   });
 
 type SignInData = z.infer<typeof signInSchema>;
 type SignUpData = z.infer<typeof signUpSchema>;
 
-interface UserInfo {
-  id: string;
-  name: string;
-  email: string;
-  // Add other fields as necessary
-}
-
 const AuthForm: React.FC = () => {
   const [isSignIn, setIsSignIn] = useState(true);
   const [rememberMe, setRememberMe] = useState(false);
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null); // Define userInfo state
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    reset,
   } = useForm<SignInData | SignUpData>({
     resolver: zodResolver(isSignIn ? signInSchema : signUpSchema),
   });
 
-  // Log userInfo whenever it updates
   useEffect(() => {
-    if (userInfo) {
-      console.log("User Info updated:", userInfo);
-    }
-  }, [userInfo]);
+    const checkSession = async () => {
+      try {
+        // Direct user check instead of session check
+        const user = await account.get();
+        
+        const jwt = await account.createJWT();
+        
+        const syncResponse = await fetch("/api/verify-user", {
+          headers: { Authorization: `Bearer ${jwt.jwt}` }
+        });
 
-  const onSubmit = async (data: SignInData | SignUpData) => {
-    const endpoint = isSignIn ? "/login" : "/registration";
-    const apiUrl = `https://txq7sz-5000.asse.devtunnels.ms${endpoint}`;
-    console.log("Request URL:", apiUrl);
+        if (!syncResponse.ok) throw new Error("Session verification failed");
+        
+        router.push("/dashboard");
+      } catch (error) {
+        await account.deleteSession('current');
+        localStorage.removeItem("authEmail");
+      }
+    };
+    
+    checkSession();
+  }, [router]);
+
+  const handleAppwriteAuth = async (data: SignInData | SignUpData) => {
+    setLoading(true);
+    setError("");
 
     try {
-      const response = await fetch(apiUrl, {
+      let user: Models.User<Models.Preferences>;
+      
+      if (isSignIn) {
+        await account.createEmailPasswordSession(data.email, data.password);
+        user = await account.get();
+      } else {
+        const { username, email, password } = data as SignUpData;
+        user = await account.create(ID.unique(), email, password, username);
+        await account.createEmailPasswordSession(email, password);
+      }
+ 
+      const jwt = await account.createJWT();
+
+      const syncResponse = await fetch("/api/sync-user", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt.jwt}`,
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          appwriteId: user.$id,
+          email: user.email,
+          ...(!isSignIn && { username: (data as SignUpData).username }),
+        }),
       });
 
-      if (response.ok) {
-        const responseData = await response.json();
-        console.log(responseData);
-        if (!isSignIn) {
-          // Handle user info after successful registration
-          setUserInfo(responseData.user_info);
-        }
-        if (rememberMe) {
-          localStorage.setItem("userData", JSON.stringify(data));
-        }
-        router.push("/");
-      } else {
-        const errorData = await response.json();
-        console.error("Error:", errorData.message);
+      if (!syncResponse.ok) {
+        throw new Error("Failed to sync user data");
       }
-    } catch (error) {
-      console.error("Error:", error);
+
+      if (rememberMe) {
+        localStorage.setItem("authEmail", data.email);
+      } else {
+        localStorage.removeItem("authEmail");
+      }
+
+      router.push("/dashboard");
+    } catch (err: unknown) {
+      await account.deleteSession('current');
+      setError(
+        err instanceof Error ? err.message : "Authentication failed"
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   const isSignUpErrors = (
     errors: FieldErrors<SignInData | SignUpData>
-  ): errors is FieldErrors<SignUpData> => {
-    return !isSignIn;
-  };
+  ): errors is FieldErrors<SignUpData> => !isSignIn;
 
   return (
     <div className="flex-1 flex flex-col gap-4 items-center justify-center bg-gray-50">
       <div className="text-gray-800">
         <div className="flex items-center relative gap-4 justify-center">
           <div className="pulse">
-            <Image src="/logo.svg" alt="Logo" height={70} width={70} />
+            <Image 
+              src="/logo.svg" 
+              alt="Logo" 
+              width={70} 
+              height={70}
+              priority
+            />
           </div>
           <h1 className="text-3xl font-edu font-bold mb-2">
             Welcome to <span>SafeSpace</span> 😊
@@ -109,12 +159,19 @@ const AuthForm: React.FC = () => {
         </p>
       </div>
       <form
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={handleSubmit(handleAppwriteAuth)}
         className="bg-white p-6 rounded shadow-md w-full max-w-sm"
       >
         <h2 className="text-2xl font-bold text-center mb-4">
           {isSignIn ? "Sign In" : "Sign Up"}
         </h2>
+
+        {error && (
+          <div className="mb-4 p-2 bg-red-100 text-red-700 rounded text-sm">
+            {error}
+          </div>
+        )}
+
         {!isSignIn && (
           <div className="mb-4">
             <label
@@ -128,6 +185,7 @@ const AuthForm: React.FC = () => {
               id="username"
               {...register("username")}
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={loading}
             />
             {isSignUpErrors(errors) && errors.username && (
               <p className="text-red-500 text-sm mt-1">
@@ -136,6 +194,7 @@ const AuthForm: React.FC = () => {
             )}
           </div>
         )}
+
         <div className="mb-4">
           <label
             htmlFor="email"
@@ -148,11 +207,13 @@ const AuthForm: React.FC = () => {
             id="email"
             {...register("email")}
             className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading}
           />
           {errors.email && (
             <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
           )}
         </div>
+
         <div className="mb-4">
           <label
             htmlFor="password"
@@ -165,6 +226,7 @@ const AuthForm: React.FC = () => {
             id="password"
             {...register("password")}
             className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading}
           />
           {errors.password && (
             <p className="text-red-500 text-sm mt-1">
@@ -172,6 +234,7 @@ const AuthForm: React.FC = () => {
             </p>
           )}
         </div>
+
         {!isSignIn && (
           <div className="mb-4">
             <label
@@ -185,6 +248,7 @@ const AuthForm: React.FC = () => {
               id="confirmPassword"
               {...register("confirmPassword")}
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={loading}
             />
             {isSignUpErrors(errors) && errors.confirmPassword && (
               <p className="text-red-500 text-sm mt-1">
@@ -193,6 +257,7 @@ const AuthForm: React.FC = () => {
             )}
           </div>
         )}
+
         <div className="flex items-center mb-4">
           <input
             type="checkbox"
@@ -200,17 +265,21 @@ const AuthForm: React.FC = () => {
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
             className="mr-2"
+            disabled={loading}
           />
           <label htmlFor="rememberMe" className="text-gray-700">
             Remember Me
           </label>
         </div>
+
         <button
           type="submit"
-          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition"
+          disabled={loading}
+          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          {isSignIn ? "Sign In" : "Sign Up"}
+          {loading ? "Processing..." : isSignIn ? "Sign In" : "Sign Up"}
         </button>
+
         <p className="text-sm text-center mt-4">
           {isSignIn
             ? "Don't have an account?"
@@ -218,7 +287,11 @@ const AuthForm: React.FC = () => {
           <button
             type="button"
             className="text-blue-500 hover:underline"
-            onClick={() => setIsSignIn(!isSignIn)}
+            onClick={() => {
+              setIsSignIn(!isSignIn);
+              reset();
+            }}
+            disabled={loading}
           >
             {isSignIn ? "Sign Up" : "Sign In"}
           </button>
