@@ -7,13 +7,13 @@ import os
 from app import socketio,db
 
 
-
+api_key = os.getenv('OpenAI_api_key')
 
 chat = Blueprint('chat',__name__)
 
 
 client = OpenAI(
-  api_key="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"
+  api_key=api_key
 )
 
 
@@ -26,7 +26,7 @@ def send_message():
 
     client = OpenAI(
   base_url="https://openrouter.ai/api/v1",
-  api_key="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",
+  api_key=api_key
 )
 
     completion = client.chat.completions.create(
@@ -56,4 +56,4 @@ def send_message():
     )
     print(completion.choices[0].message.content)
     return jsonify({"message": completion.choices[0].message.content}), 200
-    # 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
+    
