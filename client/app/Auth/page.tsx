@@ -55,7 +55,8 @@ const AuthForm: React.FC = () => {
 
   const onSubmit = async (data: SignInData | SignUpData) => {
     const endpoint = isSignIn ? "/login" : "/registration";
-    const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}${endpoint}`;
+    const apiUrl = `https://txq7sz-5000.asse.devtunnels.ms${endpoint}`;
+    console.log("Request URL:", apiUrl);
 
     try {
       const response = await fetch(apiUrl, {
