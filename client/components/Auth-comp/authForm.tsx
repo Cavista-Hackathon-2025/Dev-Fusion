@@ -65,6 +65,8 @@ const AuthForm: React.FC = () => {
     const checkSession = async () => {
       try {
         const user = await account.get();
+        console.log("Signed-in User:", user.name);
+
         const jwt = await account.createJWT();
         
         const verification = await fetch("/api/verify-user", {
@@ -99,6 +101,8 @@ const AuthForm: React.FC = () => {
         // Sign in flow
         await account.createEmailPasswordSession(data.email, data.password);
         user = await account.get();
+        console.log("Signed-in User:", user.name);
+
       } else {
         // Sign up flow
         const { username: newUsername, email, password, gender: newGender } = data as SignUpData;
