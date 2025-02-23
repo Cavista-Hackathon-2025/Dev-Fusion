@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import { ChatBubbleLeftEllipsisIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 const SupportChatbot = () => {
@@ -15,10 +15,13 @@ const SupportChatbot = () => {
   }, []);
 
   useEffect(() => {
-    fetch('https://your-api-url.com/messages')
-      .then(response => response.json())
-      .then(data => setMessages(data.chats.flatMap(chat => chat.messages)))
-      .catch(error => console.error('Error fetching messages:', error));
+    fetch("https://your-api-url.com/messages")
+      .then((response) => response.json())
+      .then((data) => {
+        const allMessages = data.chats.flatMap((chat) => chat.messages);
+        setMessages(allMessages);
+      })
+      .catch((error) => console.error("Error fetching messages:", error));
   }, []);
 
   return (
@@ -61,10 +64,9 @@ const SupportChatbot = () => {
 
           <div className="flex-1 overflow-y-auto p-3">
             {messages.map((msg, index) => (
-              <div key={index} className={`mb-2 ${msg.sender === "bot" ? "text-left" : "text-right"}`}>
-                <span className={`inline-block px-3 py-2 rounded-lg ${msg.sender === "bot" ? "bg-gray-200 text-black" : "bg-blue-500 text-white"}`}>
-                  {msg.prompt || msg.text}
-                </span>
+              <div key={index} className="mb-2">
+                <div className="text-left bg-gray-200 p-2 rounded-lg">{msg.prompt}</div>
+                <div className="text-left bg-blue-200 p-2 rounded-lg mt-1">{msg.ai_response}</div>
               </div>
             ))}
           </div>
