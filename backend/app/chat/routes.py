@@ -26,7 +26,7 @@ def send_message():
 
     client = OpenAI(
   base_url="https://openrouter.ai/api/v1",
-  api_key='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'
+  api_key='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'
 )
 
     completion = client.chat.completions.create(
