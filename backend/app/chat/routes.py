@@ -62,7 +62,31 @@ def send_message():
     print(new_message)
     return jsonify({"message": completion.choices[0].message.content}), 200
     
-@chat.route("/get_chats", methods=["POST","GET"])
+@chat.route("/get_chats", methods=["POST", "GET"])
 def get_chats():
-    user = User.query.filter_by(email='rapto@example1.com').first()
-    user_chats = user.chats
+    user = User.query.filter_by(email='rapto@example.com').first()
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user_chats = user.chats  # This is a list of chat objects
+
+    # Extract messages from each chat
+    chats_data = []
+    for chat in user_chats:
+        chat_data = {
+            "chat_id": chat.id,
+            "messages": [
+                {
+                    "message_id": message.id,
+                    "prompt": message.prompt,
+                    "ai_response": message.ai_response,
+                    "timestamp": message.timestamp.strftime("%Y-%m-%d %H:%M:%S")  # Format timestamp
+                }
+                for message in chat.messages  # Assuming chat.messages contains related messages
+            ]
+        }
+        chats_data.append(chat_data)
+
+    return jsonify({"chats": chats_data})
+
