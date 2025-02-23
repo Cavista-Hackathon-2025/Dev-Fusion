@@ -10,20 +10,20 @@ users= Blueprint('users',__name__)
 @users.route('/registration',methods = ['POST','GET'])
 def registration():
     user_data = request.json
-    
-    email = user_data['email']
-    password = user_data['password']
+    print(user_data)
+    # email = user_data['email']
+    # password = user_data['password']
     username = user_data['username']
-    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+    # hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     # Check if email or username already exists
     existing_user = User.query.filter(
-        (User.email == user_data['email']) | (User.username == user_data['username'])
+        (User.username == user_data['username'])
     ).first()
 
     if existing_user:
         return jsonify({"error": "User already exists"}), 401  # Return 401 Unauthorized
 
-    user = User(username=username,email=email,password=hashed_password)
+    user = User(username=username)
     new_chat = Chat(title="Chat", user_name=username)
     db.session.add(user)
     db.session.add(new_chat)
@@ -43,10 +43,6 @@ def login():
     else:
         return jsonify({"message": "Login failed"}), 401
 
-# @users.route('/logout')
-# def logout():
-#     logout_user()
-#     return redirect(url_for('users.login'))
 
 @users.route('/account',methods = ['POST','GET'])
 

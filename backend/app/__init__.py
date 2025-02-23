@@ -6,7 +6,7 @@ from flask_bcrypt import Bcrypt
 from flask_socketio import SocketIO
 # from flask_mail import Mail
 from app.config import Config
-
+from flask_migrate import Migrate
 
 
 
@@ -15,14 +15,14 @@ db = SQLAlchemy()
 bcrypt =Bcrypt()
 socketio = SocketIO()
 # mail = Mail()
-
+# migrate = Migrate() 
 
 def create_app(config_class = Config):
     app = Flask(__name__)
     app.config.from_object(Config)
-    allowed_origins = ["http://localhost:3000", "http://127.0.0.1:3000", "*"]  
-    # CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
+    
     CORS(app, supports_credentials=True)
+    # Migrate.init_app(app, db)
     db.init_app(app)
     bcrypt.init_app(app)
     socketio.init_app(app)

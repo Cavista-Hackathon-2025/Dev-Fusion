@@ -28,7 +28,7 @@ const slides = [
 
 const Carousel = () => {
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-blue-600 to-blue-800 text-white flex flex-col justify-center items-center px-4 py-12 md:px-8">
+    <div className="relative min-h-screen  bg-gradient-to-b from-blue-600 to-blue-800 text-white flex flex-col justify-center items-center px-4 py-12 md:px-8">
       <div className="absolute inset-0 bg-[url('/pattern.png')] opacity-10" />
       
       <div className="relative w-full max-w-4xl mx-auto">

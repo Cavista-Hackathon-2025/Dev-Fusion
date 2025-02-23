@@ -40,8 +40,98 @@ const AuthForm: React.FC = () => {
     resolver: zodResolver(isSignIn ? signInSchema : signUpSchema),
   });
 
+<<<<<<< HEAD
   const handleAuth = async () => {
     router.push("/pages/Dashboard");
+=======
+  useEffect(() => {
+    console.log("Signed-in User:");
+
+    const checkSession = async () => {
+      try {
+        const user = await account.get();
+
+        const jwt = await account.createJWT();
+        
+        const verification = await fetch("/api/verify-user", {
+          headers: { Authorization: `Bearer ${jwt.jwt}` }
+        });
+
+        if (!verification.ok) throw new Error("Session verification failed");
+
+        setRedirecting(true);
+        router.push("/");
+      } catch (error) {
+        await account.deleteSession('current');
+        if (window.location.pathname !== '/auth') {
+          router.push("/auth");
+        }
+      }
+    };
+
+    checkSession();
+  }, [router, redirecting]);
+
+  const handleAuth = async (data: SignInData | SignUpData) => {
+    setLoading(true);
+    setError("");
+
+    try {
+      let user: Models.User<Models.Preferences>;
+      let username = "";
+      let gender = "";
+
+      if (isSignIn) {
+        // Sign in flow
+        await account.createEmailPasswordSession(data.email, data.password);
+        user = await account.get();
+        // console.log("Signed-in User:");
+
+      } else {
+        // Sign up flow
+        const { username: newUsername, email, password, gender: newGender } = data as SignUpData;
+        username = newUsername;
+        gender = newGender;
+        
+        user = await account.create(ID.unique(), email, password, newUsername);
+        await account.createEmailPasswordSession(email, password);
+      }
+
+      // Sync with backend
+      const jwt = await account.createJWT();
+      const syncResponse = await fetch("/api/sync-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt.jwt}`,
+        },
+        body: JSON.stringify({
+          appwriteId: user.$id,
+          email: user.email,
+          ...(!isSignIn && { username, gender }),
+        }),
+      });
+
+      if (!syncResponse.ok) {
+        const errorData = await syncResponse.json();
+        throw new Error(errorData.error || "Failed to sync user data");
+      }
+
+      if (rememberMe) {
+        localStorage.setItem("authEmail", data.email);
+      } else {
+        localStorage.removeItem("authEmail");
+      }
+
+      setRedirecting(true);
+      router.push("/");
+    } catch (err: unknown) {
+      await account.deleteSession('current');
+      setError(err instanceof Error ? err.message : "Authentication failed");
+    } finally {
+      setLoading(false);
+    }
+>>>>>>> 273457d06f8ec4e683478edcee82c5a3feca24db
   };
 
   const isSignUpErrors = (

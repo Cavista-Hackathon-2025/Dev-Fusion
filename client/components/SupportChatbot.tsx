@@ -48,6 +48,7 @@ const SupportChat = () => {
     const positiveResponses = ["good", "great", "happy", "fine", "awesome"];
     const negativeResponses = ["sad", "tired", "bad", "not good", "depressed"];
     const concerningResponses = ["suicide", "kill myself", "death", "ending it", "no hope"];
+    const testingResponses = ["test suicide", "test death", "test therapist"]; // Specific test words
 
     if (positiveResponses.some((word) => response.includes(word))) {
       sendBotMessage("That's wonderful to hear! 😊 Keep up the positivity! 💪");
@@ -55,7 +56,11 @@ const SupportChat = () => {
       sendBotMessage("I'm sorry you're feeling that way. 💙 Do you want to talk about it?");
     } else if (concerningResponses.some((word) => response.includes(word))) {
       sendBotMessage(
-        "I'm really sorry you're feeling this way. 😔 You're not alone, and help is available. Please reach out to a trusted friend or a professional therapist. 💙"
+        "I'm really sorry you're feeling this way. 😔 You're not alone, and help is available. Please consider talking to a professional therapist. 💙"
+      );
+    } else if (testingResponses.some((word) => response.includes(word))) {
+      sendBotMessage(
+        "It looks like you're testing sensitive words. If you or someone you know is struggling, please reach out to a professional therapist. 💙"
       );
     } else {
       sendBotMessage("I see. Could you tell me more about how you're feeling?");

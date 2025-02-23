@@ -15,9 +15,9 @@ chat = Blueprint('chat',__name__)
 
 
 
-@chat.route("/send_message", methods=["POST","GET"])
-def send_message():
-    user = User.query.filter_by(email='rapto@example.com').first()
+@chat.route("/send_message/<username>", methods=["POST","GET"])
+def send_message(username):
+    user = User.query.filter_by(username=username).first()
     user_chats = user.chats[0] 
     user_data = request.get_json()
 
@@ -26,7 +26,7 @@ def send_message():
 
     client = OpenAI(
   base_url="https://openrouter.ai/api/v1",
-  api_key='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'
+  api_key='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'
 )
 
     completion = client.chat.completions.create(
@@ -62,9 +62,9 @@ def send_message():
     print(new_message)
     return jsonify({"message": completion.choices[0].message.content}), 200
     
-@chat.route("/get_chats", methods=["POST", "GET"])
-def get_chats():
-    user = User.query.filter_by(email='rapto@example.com').first()
+@chat.route("/get_chats/<username>", methods=["POST", "GET"])
+def get_chats(username):
+    user = User.query.filter_by(username=username).first()
 
     if not user:
         return jsonify({"error": "User not found"}), 404

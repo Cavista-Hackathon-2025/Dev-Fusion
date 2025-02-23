@@ -6,7 +6,7 @@ import React from "react";
 
 const Registration: React.FC = () => {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex w-screen min-h-screen">
       <Carousel />
       <AuthForm />
     </div>
