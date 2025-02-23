@@ -13,7 +13,7 @@ const Header: React.FC = () => {
       <header className="flex  sticky items-center w-full justify-between p-4 bg-white shadow">
         <Link href="/Auth" className="flex justify-between items-center gap-1">
           <Image src="/logo.svg" alt="Logo"  width={50} height={50} className="object-contain " />
-            <p className="text-3xl hidden md:flex text-blue-800 font-edu font-bold">SafeSpace</p>
+            <p className="text-3xl hidden md:flex text-blue-800 font-edu font-bold">Serenity</p>
         </Link>         
         <div className="flex items-center gap-4">
           <div className={`app ${isDarkMode ? "dark" : "light"}`}>

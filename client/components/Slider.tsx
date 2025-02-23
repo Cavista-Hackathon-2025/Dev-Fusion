@@ -18,9 +18,8 @@ const Sidebar: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const handleLinkClick = () => {
-    setLoading(true);
-    // Simulate loading completion after a short delay
-    setTimeout(() => setLoading(false), 500); // Adjust timeout as needed
+    setLoading(true); 
+    setTimeout(() => setLoading(false), 2000); 
   };
 
   return (
@@ -60,7 +59,7 @@ const Sidebar: React.FC = () => {
             {/* Activities */}
             <li>
               <Link
-                href="/"
+                href="/pages/Dashboard"
                 onClick={handleLinkClick}
                 className="flex items-center gap-4 p-2 rounded-lg hover:bg-green-50"
               >

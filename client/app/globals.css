@@ -1,21 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=Edu+AU+VIC+WA+NT+Pre:wght@400..700&family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+body {
+  transition: background-color 0.5s ease, color 0.5s ease;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Light and Dark Mode Styles */
+
+.btn-grad {background-image: linear-gradient(to right, #6a3093 0%, #a044ff  51%, #6a3093  100%)}
+.btn-grad {
+   margin: 10px;
+   padding: 15px 45px;
+   text-align: center;
+   text-transform: uppercase;
+   transition: 0.5s;
+   background-size: 200% auto;
+   color: white;            
+   box-shadow: 0 0 20px #eee;
+   border-radius: 10px;
+   display: block;
+ }
+
+ .btn-grad:hover {
+   background-position: right center; /* change the direction of the change here */
+   color: #fff;
+   text-decoration: none;
+ }
+
+.pulse::after{
+  content: "";
+  height: 6px;
+  width: 8px;
+  background-color: #1f1ad7;
+  border-radius: 50%;
+  position: absolute;
+  top: 29px;
+  left: 70px;
+  -webkit-animation: 1.5s infinite pulse;
+  animation: 1.5s infinite pulse;
+}
+@keyframes pulse{
+  0% {
+    box-shadow: 0 0 0 0 #0c1fd7;
+}
+70% {
+    box-shadow: 0 0 0 20px rgba(12, 31, 215, 0);
+}
+100% {
+    box-shadow: 0 0 0 0 rgba(12, 31, 215, 0);
   }
 }
+/* Adjust location */
+.custom-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px; /* Adjust spacing */
+}
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+/* Adjust dot color and size */
+.custom-pagination .swiper-pagination-bullet {
+  width: 12px; /* Adjust size */
+  height: 12px; /* Adjust size */
+  background-color: white; /* Adjust color */
+  opacity: 0.7; /* Adjust transparency */
+  transition: background-color 0.3s, transform 0.3s;
+}
+
+.custom-pagination .swiper-pagination-bullet-active {
+  background-color: rgb(0, 225, 255); /* Active dot color */
+  transform: scale(1.2); /* Active dot scale effect */
+}
+
+.slick-slide > div{
+  margin: 0 10px;
+}
+#calendar-box {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.react-calendar {
+  border: none;
+  width: 100%;
+  font-family: Arial, sans-serif;
+}
+
+.react-calendar__tile {
+  padding: 10px;
+  text-align: center;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+ 
+.react-calendar__tile:hover {
+  background-color: #e2e8f0;
+}
+
+button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.5);
+}
+
+.react-calendar {
+  width: 100% !important;
+  border: none !important;
+  font-family: "Inter", sans-serif !important;
+}
+
+.react-calendar__navigation__label__labelText {
+  font-weight: 600;
+}
+
+.react-calendar__tile--active {
+  background-color: #c3ebfa !important;
+  color: black !important;
 }
