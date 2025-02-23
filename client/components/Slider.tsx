@@ -48,8 +48,8 @@ const Sidebar: React.FC = () => {
             className="w-10 h-10 rounded-full"
           />
           <div className={`ml-3 duration-300 ${isHovered ? "block" : "hidden"}`}>
-            <h3 className="font-semibold text-sm">Marvin McKinney</h3>
-            <p className="text-xs text-gray-500">@marvin</p>
+            <h3 className="font-semibold text-sm">Alex</h3>
+            <p className="text-xs text-gray-500">@Alex567</p>
           </div>
         </div>
 
