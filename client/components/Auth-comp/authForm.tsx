@@ -22,7 +22,7 @@ const client = new Client()
 
 const account = new Account(client);
 
-// Schema definitions
+// Form validation schemas
 const signInSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -32,6 +32,9 @@ const signUpSchema = signInSchema
   .extend({
     username: z.string().min(3, "Username must be at least 3 characters"),
     confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+    gender: z.enum(["male", "female", "other", "prefer-not-to-say"], {
+      required_error: "Please select your gender",
+    }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords must match",
@@ -46,6 +49,7 @@ const AuthForm: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const router = useRouter();
 
   const {
@@ -60,45 +64,53 @@ const AuthForm: React.FC = () => {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // Direct user check instead of session check
         const user = await account.get();
-        
         const jwt = await account.createJWT();
         
-        const syncResponse = await fetch("/api/verify-user", {
+        const verification = await fetch("/api/verify-user", {
           headers: { Authorization: `Bearer ${jwt.jwt}` }
         });
 
-        if (!syncResponse.ok) throw new Error("Session verification failed");
-        
-        router.push("/dashboard");
+        if (!verification.ok) throw new Error("Session verification failed");
+
+        setRedirecting(true);
+        router.push("/");
       } catch (error) {
         await account.deleteSession('current');
-        localStorage.removeItem("authEmail");
+        if (window.location.pathname !== '/auth') {
+          router.push("/auth");
+        }
       }
     };
-    
-    checkSession();
-  }, [router]);
 
-  const handleAppwriteAuth = async (data: SignInData | SignUpData) => {
+    checkSession();
+  }, [router, redirecting]);
+
+  const handleAuth = async (data: SignInData | SignUpData) => {
     setLoading(true);
     setError("");
 
     try {
       let user: Models.User<Models.Preferences>;
-      
+      let username = "";
+      let gender = "";
+
       if (isSignIn) {
+        // Sign in flow
         await account.createEmailPasswordSession(data.email, data.password);
         user = await account.get();
       } else {
-        const { username, email, password } = data as SignUpData;
-        user = await account.create(ID.unique(), email, password, username);
+        // Sign up flow
+        const { username: newUsername, email, password, gender: newGender } = data as SignUpData;
+        username = newUsername;
+        gender = newGender;
+        
+        user = await account.create(ID.unique(), email, password, newUsername);
         await account.createEmailPasswordSession(email, password);
       }
- 
-      const jwt = await account.createJWT();
 
+      // Sync with backend
+      const jwt = await account.createJWT();
       const syncResponse = await fetch("/api/sync-user", {
         method: "POST",
         headers: {
@@ -108,12 +120,13 @@ const AuthForm: React.FC = () => {
         body: JSON.stringify({
           appwriteId: user.$id,
           email: user.email,
-          ...(!isSignIn && { username: (data as SignUpData).username }),
+          ...(!isSignIn && { username, gender }),
         }),
       });
 
       if (!syncResponse.ok) {
-        throw new Error("Failed to sync user data");
+        const errorData = await syncResponse.json();
+        throw new Error(errorData.error || "Failed to sync user data");
       }
 
       if (rememberMe) {
@@ -122,12 +135,11 @@ const AuthForm: React.FC = () => {
         localStorage.removeItem("authEmail");
       }
 
-      router.push("/dashboard");
+      setRedirecting(true);
+      router.push("/");
     } catch (err: unknown) {
       await account.deleteSession('current');
-      setError(
-        err instanceof Error ? err.message : "Authentication failed"
-      );
+      setError(err instanceof Error ? err.message : "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -138,165 +150,195 @@ const AuthForm: React.FC = () => {
   ): errors is FieldErrors<SignUpData> => !isSignIn;
 
   return (
-    <div className="flex-1 flex flex-col gap-4 items-center justify-center bg-gray-50">
-      <div className="text-gray-800">
-        <div className="flex items-center relative gap-4 justify-center">
-          <div className="pulse">
-            <Image 
-              src="/logo.svg" 
-              alt="Logo" 
-              width={70} 
-              height={70}
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <div className="mx-auto h-16 w-16 relative">
+            <Image
+              src="/logo.svg"
+              alt="Logo"
+              layout="fill"
+              objectFit="contain"
               priority
             />
           </div>
-          <h1 className="text-3xl font-edu font-bold mb-2">
-            Welcome to <span>SafeSpace</span> 😊
-          </h1>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            {isSignIn ? "Sign in to your account" : "Create a new account"}
+          </h2>
         </div>
-        <p className="text-xl mb-6 font-nunito text-center">
-          Your emotional support web app. Here, you are never alone.
-        </p>
-      </div>
-      <form
-        onSubmit={handleSubmit(handleAppwriteAuth)}
-        className="bg-white p-6 rounded shadow-md w-full max-w-sm"
-      >
-        <h2 className="text-2xl font-bold text-center mb-4">
-          {isSignIn ? "Sign In" : "Sign Up"}
-        </h2>
 
         {error && (
-          <div className="mb-4 p-2 bg-red-100 text-red-700 rounded text-sm">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
             {error}
           </div>
         )}
 
-        {!isSignIn && (
-          <div className="mb-4">
-            <label
-              htmlFor="username"
-              className="block text-gray-700 mb-1 font-medium"
-            >
-              Username
-            </label>
-            <input
-              type="text"
-              id="username"
-              {...register("username")}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
-            {isSignUpErrors(errors) && errors.username && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.username.message}
-              </p>
+        <form onSubmit={handleSubmit(handleAuth)} className="mt-8 space-y-6">
+          <div className="rounded-md shadow-sm -space-y-px">
+            {!isSignIn && (
+              <>
+                <div>
+                  <label htmlFor="username" className="sr-only">
+                    Username
+                  </label>
+                  <input
+                    {...register("username")}
+                    id="username"
+                    type="text"
+                    required
+                    className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                    placeholder="Username"
+                    disabled={loading}
+                  />
+                  {isSignUpErrors(errors) && errors.username && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.username.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="gender" className="sr-only">
+                    Gender
+                  </label>
+                  <select
+                    {...register("gender")}
+                    id="gender"
+                    className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                    disabled={loading}
+                    defaultValue=""
+                  >
+                    <option value="" disabled>Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                    <option value="prefer-not-to-say">Prefer not to say</option>
+                  </select>
+                  {isSignUpErrors(errors) && errors.gender && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.gender.message}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
+            <div>
+              <label htmlFor="email" className="sr-only">
+                Email address
+              </label>
+              <input
+                {...register("email")}
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Email address"
+                disabled={loading}
+              />
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.email.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <input
+                {...register("password")}
+                id="password"
+                type="password"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="Password"
+                disabled={loading}
+              />
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
+
+            {!isSignIn && (
+              <div>
+                <label htmlFor="confirmPassword" className="sr-only">
+                  Confirm Password
+                </label>
+                <input
+                  {...register("confirmPassword")}
+                  id="confirmPassword"
+                  type="password"
+                  required
+                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  placeholder="Confirm Password"
+                  disabled={loading}
+                />
+                {isSignUpErrors(errors) && errors.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.confirmPassword.message}
+                  </p>
+                )}
+              </div>
             )}
           </div>
-        )}
 
-        <div className="mb-4">
-          <label
-            htmlFor="email"
-            className="block text-gray-700 mb-1 font-medium"
-          >
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            {...register("email")}
-            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
-          />
-          {errors.email && (
-            <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
-          )}
-        </div>
-
-        <div className="mb-4">
-          <label
-            htmlFor="password"
-            className="block text-gray-700 mb-1 font-medium"
-          >
-            Password
-          </label>
-          <input
-            type="password"
-            id="password"
-            {...register("password")}
-            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
-          />
-          {errors.password && (
-            <p className="text-red-500 text-sm mt-1">
-              {errors.password.message}
-            </p>
-          )}
-        </div>
-
-        {!isSignIn && (
-          <div className="mb-4">
-            <label
-              htmlFor="confirmPassword"
-              className="block text-gray-700 mb-1 font-medium"
-            >
-              Confirm Password
-            </label>
-            <input
-              type="password"
-              id="confirmPassword"
-              {...register("confirmPassword")}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
-            {isSignUpErrors(errors) && errors.confirmPassword && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.confirmPassword.message}
-              </p>
-            )}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                disabled={loading}
+              />
+              <label
+                htmlFor="remember-me"
+                className="ml-2 block text-sm text-gray-900"
+              >
+                Remember me
+              </label>
+            </div>
           </div>
-        )}
 
-        <div className="flex items-center mb-4">
-          <input
-            type="checkbox"
-            id="rememberMe"
-            checked={rememberMe}
-            onChange={(e) => setRememberMe(e.target.checked)}
-            className="mr-2"
-            disabled={loading}
-          />
-          <label htmlFor="rememberMe" className="text-gray-700">
-            Remember Me
-          </label>
-        </div>
+          <div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              {loading ? (
+                <span>Processing...</span>
+              ) : isSignIn ? (
+                "Sign In"
+              ) : (
+                "Sign Up"
+              )}
+            </button>
+          </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {loading ? "Processing..." : isSignIn ? "Sign In" : "Sign Up"}
-        </button>
-
-        <p className="text-sm text-center mt-4">
-          {isSignIn
-            ? "Don't have an account?"
-            : "Already have an account?"}{" "}
-          <button
-            type="button"
-            className="text-blue-500 hover:underline"
-            onClick={() => {
-              setIsSignIn(!isSignIn);
-              reset();
-            }}
-            disabled={loading}
-          >
-            {isSignIn ? "Sign Up" : "Sign In"}
-          </button>
-        </p>
-      </form>
+          <div className="text-center text-sm">
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignIn(!isSignIn);
+                reset();
+              }}
+              className="font-medium text-blue-600 hover:text-blue-500"
+              disabled={loading}
+            >
+              {isSignIn
+                ? "Don't have an account? Sign Up"
+                : "Already have an account? Sign In"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
