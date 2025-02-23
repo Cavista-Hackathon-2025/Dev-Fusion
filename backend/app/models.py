@@ -10,15 +10,19 @@ from itsdangerous import URLSafeTimedSerializer as Serializer
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    appwrite_id = db.Column(db.Text, unique=True, nullable=False)
+    username = db.Column(db.Text, unique=True, nullable=False)
+    email= db.Column(db.Text, nullable=False)
+    password = db.Column(db.Text, unique=True, nullable=False)
+
     # A user can have many chats
     chats = db.relationship('Chat', backref='user', lazy=True)
+
 
 class Chat(db.Model):
     __tablename__ = 'chats'
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.Text, nullable=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.appwrite_id'), nullable=False)
+    user_name = db.Column(db.Integer, db.ForeignKey('users.username'), nullable=False)
     # A chat can have many messages
     messages = db.relationship('Message', backref='chat', lazy=True)
 
