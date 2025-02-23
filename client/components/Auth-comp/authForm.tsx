@@ -65,7 +65,7 @@ const AuthForm: React.FC = () => {
     const checkSession = async () => {
       try {
         const user = await account.get();
-        console.log("Signed-in User:", user.name);
+        console.log("Signed-in User:");
 
         const jwt = await account.createJWT();
         
@@ -101,7 +101,7 @@ const AuthForm: React.FC = () => {
         // Sign in flow
         await account.createEmailPasswordSession(data.email, data.password);
         user = await account.get();
-        console.log("Signed-in User:", user.name);
+        console.log("Signed-in User:");
 
       } else {
         // Sign up flow
